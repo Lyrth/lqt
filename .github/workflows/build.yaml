@@ -1,0 +1,51 @@
+name: Build
+
+on: workflow_dispatch
+
+jobs:
+  publish:
+    runs-on: windows-2019
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v1
+        with:
+          path: ../Qt
+          key: ${{ runner.os }}-QtCache
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: '5.15.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          install-deps: 'true'
+          modules: 'qtscript qtwebengine'
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+
+      - name: Run MSVC VsDevCmd
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build LuaJIT
+        working-directory: ./modules/src/LuaJIT/src
+        run: call msvcbuild.bat
+
+      - name: Make build directory
+        run: mkdir build
+
+      - name: Run cmake and build
+        run: |
+          cmake -G "Visual Studio 16 2019" -A x64 -H. -Bbuild -Wno-dev
+          cmake --build build --target ALL_BUILD --config Release -j4
+
+      - name: (Debug) Show build results
+        run: dir /s build
+
+      - name: Done.
+        run: echo "Done."
