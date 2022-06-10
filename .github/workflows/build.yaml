@@ -5,6 +5,9 @@ on: workflow_dispatch
 jobs:
   publish:
     runs-on: windows-2019
+    permissions:
+      # Token permission for release uploading
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -42,15 +45,39 @@ jobs:
         shell: cmd
         run: mkdir build
 
+      - name: (Draft) Cache build
+        id: cache-build
+        uses: actions/cache@v2
+        with:
+          path: '${{ github.workspace }}/build/'
+          key: ${{ runner.os }}-BuildCache
+
       - name: Run cmake and build
+        if: steps.cache-build.outputs.cache-hit != 'true'
         shell: cmd
         run: |
           cmake -G "Visual Studio 16 2019" -A x64 -H. -Bbuild -Wno-dev
           cmake --build build --target ALL_BUILD --config Release -j4
 
-      - name: (Debug) Show build results
-        shell: cmd
-        run: dir /s build
+      - name: Get current short commit hash
+        id: hash-info
+        shell: bash
+        run: echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"
+
+      - name: Archive output into zip
+        uses: thedoctor0/zip-release@v0.6.2
+        with:
+          type: 'zip'
+          path: 'build/lib/Release'
+          filename: 'lqt-${{ steps.hash-info.outputs.commit_hash }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          exclusions: '*.exp *.lib'
+
+      - name: Upload Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: 'lqt-${{ steps.hash-info.outputs.commit_hash }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          draft: 'true'
+          body: Draft release for Windows x64
 
       - name: Done.
         run: echo "Done."
