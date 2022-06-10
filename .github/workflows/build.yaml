@@ -60,23 +60,27 @@ jobs:
           cmake --build build --target ALL_BUILD --config Release -j4
 
       - name: Get current short commit hash
-        id: hash-info
+        id: vars
         shell: bash
-        run: echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"
+        run: |
+          echo "::set-output name=date::$(date +'%Y-%m-%d.%H:%M')"
+          echo "::set-output name=commit_hash::$(git rev-parse HEAD)"
+          echo "::set-output name=commit_hash_short::$(git rev-parse --short HEAD)"
 
       - name: Archive output into zip
         uses: thedoctor0/zip-release@0.6.2
         with:
           type: 'zip'
           path: 'build/lib/Release'
-          filename: 'lqt-${{ steps.hash-info.outputs.commit_hash }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          filename: 'lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
           exclusions: '*.exp *.lib'
 
       - name: Upload Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'lqt-${{ steps.hash-info.outputs.commit_hash }}-${{ runner.os }}-${{ runner.arch }}.zip'
-          commit: $GITHUB_SHA
+          artifacts: 'lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          tag: Draft.${{ steps.vars.outputs.date }}
+          commit: ${{ steps.vars.outputs.commit_hash }}
           draft: 'true'
           body: Draft release for Windows x64
 
