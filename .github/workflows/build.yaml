@@ -39,14 +39,17 @@ jobs:
         run: call msvcbuild.bat
 
       - name: Make build directory
+        shell: cmd
         run: mkdir build
 
       - name: Run cmake and build
+        shell: cmd
         run: |
           cmake -G "Visual Studio 16 2019" -A x64 -H. -Bbuild -Wno-dev
           cmake --build build --target ALL_BUILD --config Release -j4
 
       - name: (Debug) Show build results
+        shell: cmd
         run: dir /s build
 
       - name: Done.
