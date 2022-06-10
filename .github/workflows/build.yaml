@@ -13,9 +13,9 @@ jobs:
 
       - name: Cache Qt
         id: cache-qt
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ../Qt
+          path: '${{ github.workspace }}/qt/'
           key: ${{ runner.os }}-QtCache
 
       - name: Install Qt
@@ -27,6 +27,7 @@ jobs:
           arch: 'win64_msvc2019_64'
           install-deps: 'true'
           modules: 'qtscript qtwebengine'
+          dir: '${{ github.workspace }}/qt/'
           cached: ${{ steps.cache-qt.outputs.cache-hit }}
 
       - name: Run MSVC VsDevCmd
@@ -34,6 +35,7 @@ jobs:
 
       - name: Build LuaJIT
         working-directory: ./modules/src/LuaJIT/src
+        shell: cmd
         run: call msvcbuild.bat
 
       - name: Make build directory
