@@ -76,6 +76,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: 'lqt-${{ steps.hash-info.outputs.commit_hash }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          commit: $GITHUB_SHA
           draft: 'true'
           body: Draft release for Windows x64
 
