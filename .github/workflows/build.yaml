@@ -4,7 +4,7 @@ on: workflow_dispatch
 
 jobs:
   publish:
-    runs-on: windows-2019
+    runs-on: windows-latest
     permissions:
       # Token permission for release uploading
       contents: write
@@ -36,27 +36,18 @@ jobs:
       - name: Run MSVC VsDevCmd
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build LuaJIT
-        working-directory: ./modules/src/LuaJIT/src
-        shell: cmd
-        run: call msvcbuild.bat
+      - name: Get Luvi exports library
+        shell: bash
+        run: curl -L --retry 5 --retry-max-time 30 -o luvi.lib https://github.com/luvit/luvi/releases/latest/download/luvi-regular-Windows-amd64.lib
 
       - name: Make build directory
-        shell: cmd
+        shell: bash
         run: mkdir build
 
-      - name: (Draft) Cache build
-        id: cache-build
-        uses: actions/cache@v2
-        with:
-          path: '${{ github.workspace }}/build/'
-          key: ${{ runner.os }}-BuildCache
-
       - name: Run cmake and build
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        shell: cmd
+        shell: bash
         run: |
-          cmake -G "Visual Studio 16 2019" -A x64 -H. -Bbuild -Wno-dev
+          cmake -A x64 -H. -Bbuild -Wno-dev
           cmake --build build --target ALL_BUILD --config Release -j4
 
       - name: Get current short commit hash
@@ -71,8 +62,8 @@ jobs:
         uses: thedoctor0/zip-release@0.6.2
         with:
           type: 'zip'
-          path: 'build/lib/Release'
-          filename: 'lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          filename: '${{ github.workspace }}/lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          directory: 'build/lib/Release'
           exclusions: '*.exp *.lib'
 
       - name: Upload Release
