@@ -1,0 +1,79 @@
+name: Build
+
+on: workflow_dispatch
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    permissions:
+      # Token permission for release uploading
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v2
+        with:
+          path: '${{ github.workspace }}/qt/'
+          key: ${{ runner.os }}-QtCache
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: '5.15.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          install-deps: 'true'
+          modules: 'qtscript qtwebengine'
+          dir: '${{ github.workspace }}/qt/'
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+
+      - name: Run MSVC VsDevCmd
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Get Luvi exports library
+        shell: bash
+        run: curl -L --retry 5 --retry-max-time 30 -o luvi.lib https://github.com/luvit/luvi/releases/latest/download/luvi-regular-Windows-amd64.lib
+
+      - name: Make build directory
+        shell: bash
+        run: mkdir build
+
+      - name: Run cmake and build
+        shell: bash
+        run: |
+          cmake -A x64 -H. -Bbuild -Wno-dev
+          cmake --build build --target ALL_BUILD --config Release -j4
+
+      - name: Get current short commit hash
+        id: vars
+        shell: bash
+        run: |
+          echo "::set-output name=date::$(date +'%Y-%m-%d.%H:%M')"
+          echo "::set-output name=commit_hash::$(git rev-parse HEAD)"
+          echo "::set-output name=commit_hash_short::$(git rev-parse --short HEAD)"
+
+      - name: Archive output into zip
+        uses: thedoctor0/zip-release@0.6.2
+        with:
+          type: 'zip'
+          filename: '${{ github.workspace }}/lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          directory: 'build/lib/Release'
+          exclusions: '*.exp *.lib'
+
+      - name: Upload Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: 'lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
+          tag: Draft.${{ steps.vars.outputs.date }}
+          commit: ${{ steps.vars.outputs.commit_hash }}
+          draft: 'true'
+          body: Draft release for Windows x64
+
+      - name: Done.
+        run: echo "Done."
