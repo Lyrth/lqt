@@ -1,6 +1,12 @@
 name: Build
 
-on: workflow_dispatch
+on: 
+  workflow_dispatch:
+    inputs:
+      use-build-cache:
+        type: boolean
+        default: 'true'
+        description: Use previous cached build (if it exists)
 
 jobs:
   publish:
@@ -36,6 +42,11 @@ jobs:
       - name: Run MSVC VsDevCmd
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Build LuaJIT
+        working-directory: ./modules/src/LuaJIT/src
+        shell: cmd
+        run: call msvcbuild.bat
+
       - name: Get Luvi exports library
         shell: bash
         run: curl -L --retry 5 --retry-max-time 30 -o luvi.lib https://github.com/luvit/luvi/releases/latest/download/luvi-regular-Windows-amd64.lib
@@ -44,7 +55,15 @@ jobs:
         shell: bash
         run: mkdir build
 
+      - name: Cache build
+        id: cache-build
+        uses: actions/cache@v2
+        with:
+          path: '${{ github.workspace }}/build/'
+          key: ${{ runner.os }}-BuildCache
+
       - name: Run cmake and build
+        if: ${{ steps.cache-build.outputs.cache-hit != 'true' || inputs.use-build-cache != 'true' }}
         shell: bash
         run: |
           cmake -A x64 -H. -Bbuild -Wno-dev
