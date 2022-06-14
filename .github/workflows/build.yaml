@@ -49,9 +49,11 @@ jobs:
         shell: cmd
         run: call msvcbuild.bat
 
-      - name: Get Luvi exports library
+      - name: Get Luvi exports and DLDLL libraries
         shell: bash
-        run: curl -L --retry 5 --retry-max-time 30 -o luvi.lib https://github.com/luvit/luvi/releases/latest/download/luvi-regular-Windows-amd64.lib
+        run: |
+          curl -L --retry 5 --retry-max-time 30 -o luvi.lib https://github.com/luvit/luvi/releases/latest/download/luvi-regular-Windows-amd64.lib
+          curl -L --retry 5 --retry-max-time 30 -o luvi_renamed.lib https://github.com/luvit/luvi/releases/latest/download/luvi_renamed-regular-Windows-amd64.lib
 
       - name: Make build directory
         shell: bash

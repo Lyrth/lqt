@@ -43,10 +43,13 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/lib)
 set(LUA_INCLUDE_DIR ${CMAKE_BINARY_DIR}/../modules/src/LuaJIT/src)
 set(CMAKE_PROGRAM_PATH ${LUA_INCLUDE_DIR})
 
-if (APPLE OR UNIX)
+#---> LYR: reference https://github.com/virgo-agent-toolkit/lua-sigar/blob/master/CMakeLists.txt
+set(LUVI_LINK_FLAGS "/DELAYLOAD:luvi.exe /INCLUDE:__pfnDliFailureHook2")
+
+if (APPLE)
 	set(LUA_LIBRARIES ${LUA_INCLUDE_DIR}/libluajit.a)
 elseif (WIN32)
-	set(LUA_LIBRARIES ${CMAKE_BINARY_DIR}/../luvi.lib)
+	set(LUA_LIBRARIES ${CMAKE_BINARY_DIR}/../luvi.lib ${CMAKE_BINARY_DIR}/../luvi_renamed.lib)
 endif()
 
 set(QT_SCHEMA_DIR ${CMAKE_BINARY_DIR}/../generator/schema)
@@ -225,7 +228,7 @@ function(build_qt_lib_binding BINDING_HEADER)
 											
 	target_link_libraries(${BINDING_NAME} ${LUA_LIBS_FOR_MODULE})
 	# target_link_libraries(${BINDING_NAME} ${QT_LIBRARIES} ${LUA_LIBS_FOR_MODULE})
-	set_target_properties(${BINDING_NAME} PROPERTIES PREFIX "" COMPILE_DEFINITIONS "MODULE_${BINDING_NAME}")
+	set_target_properties(${BINDING_NAME} PROPERTIES PREFIX "" COMPILE_DEFINITIONS "MODULE_${BINDING_NAME}" LINK_FLAGS "${LUVI_LINK_FLAGS}")
 
 	if(LQT_BUILDIN_CPPTOXML)
 		add_dependencies(generate_${BINDING_NAME}_xml  cpptoxml)
