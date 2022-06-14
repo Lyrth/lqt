@@ -40,7 +40,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/lib) 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/lib) 
 
-set(LUA_INCLUDE_DIR ${CMAKE_BINARY_DIR}/../modules/src/LuaJIT/src)
+set(LUA_INCLUDE_DIR ${CMAKE_BINARY_DIR}/../modules/LuaJIT/src)
 set(CMAKE_PROGRAM_PATH ${LUA_INCLUDE_DIR})
 
 #---> LYR: reference https://github.com/virgo-agent-toolkit/lua-sigar/blob/master/CMakeLists.txt

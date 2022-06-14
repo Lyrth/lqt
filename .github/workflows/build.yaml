@@ -5,7 +5,7 @@ on:
     inputs:
       use-build-cache:
         type: boolean
-        default: 'true'
+        default: 'false'
         description: Use previous cached build (if it exists)
 
 jobs:
@@ -41,11 +41,9 @@ jobs:
 
       - name: Run MSVC VsDevCmd
         uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
 
       - name: Build LuaJIT
-        working-directory: ./modules/src/LuaJIT/src
+        working-directory: ./modules/LuaJIT/src
         shell: cmd
         run: call msvcbuild.bat
 
