@@ -1,5 +1,6 @@
 name: Build
 
+
 on: 
   workflow_dispatch:
     inputs:
@@ -7,6 +8,7 @@ on:
         type: boolean
         default: 'false'
         description: Use previous cached build (if it exists)
+
 
 jobs:
   publish:
@@ -20,6 +22,7 @@ jobs:
         with:
           submodules: recursive
 
+      # Qt installation 
       - name: Cache Qt
         id: cache-qt
         uses: actions/cache@v2
@@ -39,14 +42,26 @@ jobs:
           dir: '${{ github.workspace }}/qt/'
           cached: ${{ steps.cache-qt.outputs.cache-hit }}
 
+      # Env setup
       - name: Run MSVC VsDevCmd
         uses: ilammy/msvc-dev-cmd@v1
 
+      # Building LuaJIT
       - name: Build LuaJIT
         working-directory: ./modules/LuaJIT/src
         shell: cmd
         run: call msvcbuild.bat
 
+      # Building deployment helper
+      - name: Build deployment helper
+        working-directory: ./deployhelper
+        shell: cmd
+        run: |
+          mkdir build
+          cmake -A x64 -H. -Bbuild -Wno-dev
+          cmake --build build --target ALL_BUILD --config Release -j4
+
+      # Building main
       - name: Get Luvi exports and DLDLL libraries
         shell: bash
         run: |
@@ -72,6 +87,34 @@ jobs:
           cmake -A x64 -H. -Bbuild -Wno-dev
           cmake --build build --target ALL_BUILD --config Release -j4
 
+      # Qt deployment
+      - name: Make directory structure and copy deploy helper to target
+        shell: cmd
+        run: |
+          mkdir build\lib\Release\bin
+          mkdir build\lib\Release\plugins
+          mkdir build\lib\Release\licenses
+          copy deployhelper\build\Release\lqtEmpty.exe build\lib\Release\plugins\
+
+      - name: Run windeployqt to deploy Qt dependencies
+        working-directory: ./build/lib/Release/plugins
+        shell: cmd
+        run: |
+          windeployqt --release --force --no-patchqt --no-compiler-runtime --no-translations lqtEmpty.exe
+          del lqtEmpty.exe
+          move resources ..
+          move translations ..
+          move *.dll ..\bin
+
+      - name: Copy licenses 
+        shell: cmd
+        run: |
+          curl -L --retry 5 --retry-max-time 30 -o LICENSE_luvi.txt https://github.com/luvit/luvi/raw/master/LICENSE.txt
+          curl -L --retry 5 --retry-max-time 30 -o LICENSE_qt.txt https://code.qt.io/cgit/qt/qt5.git/plain/LICENSE.LGPLv3?h=5.15.2
+          copy LICENSE_luvi.txt build\lib\Release\licenses\LICENSE_luvi.txt
+          copy LICENSE_qt.txt build\lib\Release\licenses\LICENSE_qt.txt
+
+      # Releasing
       - name: Get current short commit hash
         id: vars
         shell: bash
@@ -92,10 +135,9 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: 'lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
-          tag: Draft.${{ steps.vars.outputs.date }}
+          tag: Build.${{ steps.vars.outputs.date }}
           commit: ${{ steps.vars.outputs.commit_hash }}
-          draft: 'true'
-          body: Draft release for Windows x64
+          body: Release for Windows x64, packaged with Qt dependencies.
 
       - name: Done.
         run: echo "Done."
