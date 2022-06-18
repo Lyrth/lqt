@@ -6,7 +6,7 @@ on:
     inputs:
       use-build-cache:
         type: boolean
-        default: 'false'
+        default: 'true'
         description: Use previous cached build (if it exists)
 
 
@@ -78,7 +78,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: '${{ github.workspace }}/build/'
-          key: ${{ runner.os }}-BuildCache
+          key: ${{ runner.os }}-BuildCache-${{ hashFiles('common/**', 'cpptoxml/**', 'generator/**', 'modules/**', 'CMakeLists.txt') }}
 
       - name: Run cmake and build
         if: ${{ steps.cache-build.outputs.cache-hit != 'true' || inputs.use-build-cache != 'true' }}
@@ -119,7 +119,7 @@ jobs:
         id: vars
         shell: bash
         run: |
-          echo "::set-output name=date::$(date +'%Y-%m-%d.%H:%M')"
+          echo "::set-output name=date::$(date +'%Y.%m.%d')"
           echo "::set-output name=commit_hash::$(git rev-parse HEAD)"
           echo "::set-output name=commit_hash_short::$(git rev-parse --short HEAD)"
 
@@ -135,7 +135,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: 'lqt-${{ steps.vars.outputs.commit_hash_short }}-${{ runner.os }}-${{ runner.arch }}.zip'
-          tag: Build.${{ steps.vars.outputs.date }}
+          tag: v1-${{ steps.vars.outputs.date }}
           commit: ${{ steps.vars.outputs.commit_hash }}
           body: Release for Windows x64, packaged with Qt dependencies.
 
