@@ -36,6 +36,8 @@ project(lqt5)
 # set(REUSE_FILES 1)
 # set( CMAKE_BUILD_TYPE Debug )
 
+option(TARGET_WIN32 "Target Win32 build" OFF)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/bin) 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/lib) 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/lib) 
@@ -44,7 +46,11 @@ set(LUA_INCLUDE_DIR ${CMAKE_BINARY_DIR}/../modules/LuaJIT/src)
 set(CMAKE_PROGRAM_PATH ${LUA_INCLUDE_DIR})
 
 #---> LYR: reference https://github.com/virgo-agent-toolkit/lua-sigar/blob/master/CMakeLists.txt
-set(LUVI_LINK_FLAGS "/DELAYLOAD:luvi.exe /INCLUDE:__pfnDliFailureHook2")
+if(TARGET_WIN32)
+	set(LUVI_LINK_FLAGS "/DELAYLOAD:luvi.exe /INCLUDE:___pfnDliFailureHook2")
+else()
+	set(LUVI_LINK_FLAGS "/DELAYLOAD:luvi.exe /INCLUDE:__pfnDliFailureHook2")
+endif()
 
 if (APPLE)
 	set(LUA_LIBRARIES ${LUA_INCLUDE_DIR}/libluajit.a)

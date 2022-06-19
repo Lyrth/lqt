@@ -11,7 +11,10 @@ on:
 
 
 jobs:
-  publish:
+  windows_release_matrix:
+    strategy:
+      matrix:
+        target: [x64, Win32]
     runs-on: windows-latest
     permissions:
       # Token permission for release uploading
@@ -28,7 +31,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: '${{ github.workspace }}/qt/'
-          key: ${{ runner.os }}-QtCache
+          key: ${{ runner.os }}-${{ matrix.target }}-QtCache
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v2
@@ -36,21 +39,23 @@ jobs:
           version: '5.15.2'
           host: 'windows'
           target: 'desktop'
-          arch: 'win64_msvc2019_64'
+          arch: ${{ matrix.target == 'x64' && 'win64_msvc2019_64' || 'win32_msvc2019' }} 
           install-deps: 'true'
-          modules: 'qtscript qtwebengine'
+          modules: 'qtwebengine'
           dir: '${{ github.workspace }}/qt/'
           cached: ${{ steps.cache-qt.outputs.cache-hit }}
 
       # Env setup
       - name: Run MSVC VsDevCmd
         uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.target == 'x64' && 'amd64' || 'amd64_x86' }}
 
       # Building LuaJIT
       - name: Build LuaJIT
         working-directory: ./modules/LuaJIT/src
         shell: cmd
-        run: call msvcbuild.bat
+        run: call msvcbuild.bat ${{ matrix.target == 'Win32' && 'nogc64' || ' ' }}
 
       # Building deployment helper
       - name: Build deployment helper
@@ -58,15 +63,16 @@ jobs:
         shell: cmd
         run: |
           mkdir build
-          cmake -A x64 -H. -Bbuild -Wno-dev
+          cmake -A ${{ matrix.target }} -H. -Bbuild -Wno-dev
           cmake --build build --target ALL_BUILD --config Release -j4
 
       # Building main
       - name: Get Luvi exports and DLDLL libraries
         shell: bash
         run: |
-          curl -L --retry 5 --retry-max-time 30 -o luvi.lib https://github.com/luvit/luvi/releases/latest/download/luvi-regular-Windows-amd64.lib
-          curl -L --retry 5 --retry-max-time 30 -o luvi_renamed.lib https://github.com/luvit/luvi/releases/latest/download/luvi_renamed-regular-Windows-amd64.lib
+          VER=${{ matrix.target == 'x64' && 'amd64' || 'ia32' }}
+          curl -L --retry 5 --retry-max-time 30 -o luvi.lib https://github.com/luvit/luvi/releases/latest/download/luvi-regular-Windows-${VER}.lib
+          curl -L --retry 5 --retry-max-time 30 -o luvi_renamed.lib https://github.com/luvit/luvi/releases/latest/download/luvi_renamed-regular-Windows-${VER}.lib
 
       - name: Make build directory
         shell: bash
@@ -78,13 +84,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: '${{ github.workspace }}/build/'
-          key: ${{ runner.os }}-BuildCache-${{ hashFiles('common/**', 'cpptoxml/**', 'generator/**', 'modules/LuaJIT/.git/refs/heads/v2.1', 'CMakeLists.txt') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-BuildCache-${{ hashFiles('common/**', 'cpptoxml/**', 'generator/**', 'modules/LuaJIT/.git/refs/heads/v2.1', 'CMakeLists.txt') }}
 
       - name: Run cmake and build
         if: ${{ !steps.cache-build.outputs.cache-hit || !inputs.use-build-cache }}
         shell: cmd
         run: |
-          cmake -A x64 -H. -Bbuild -Wno-dev
+          cmake -A ${{ matrix.target }} -DTARGET_WIN32=${{ matrix.target == 'x64' && 'OFF' || 'ON' }} -H. -Bbuild -Wno-dev
           cmake --build build --target ALL_BUILD --config Release -j4
 
       # Qt deployment
@@ -128,18 +134,18 @@ jobs:
         uses: thedoctor0/zip-release@0.6.2
         with:
           type: 'zip'
-          filename: '${{ github.workspace }}/lqt-all-${{ runner.os }}-${{ runner.arch }}.zip'
+          filename: '${{ github.workspace }}/lqt-all-${{ runner.os }}-${{ matrix.target }}.zip'
           directory: 'build/lib/Release'
           exclusions: '*.exp *.lib'
 
       - name: Upload Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'lqt-all-${{ runner.os }}-${{ runner.arch }}.zip'
+          artifacts: 'lqt-all-${{ runner.os }}-${{ matrix.target }}.zip'
           tag: v1-${{ steps.vars.outputs.date }}
           commit: ${{ steps.vars.outputs.commit_hash }}
           allowUpdates: 'true'
-          body: Release for Windows x64, packaged with Qt dependencies.
+          body: Release for Windows, packaged with Qt dependencies.
 
       - name: Done.
         run: echo "Done."
